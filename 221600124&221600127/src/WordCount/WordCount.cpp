@@ -21,6 +21,7 @@ int countChar(FILE *file) {
 	int line = 1;
 	char c;
 	while (fscanf_s(file, "%c", &c, sizeof(char)) != EOF) {	
+		if (c < 0 || c>255) continue;
 		if (c == '\n') {
 			if (line == 1) {
 				cnt-=8;
@@ -55,6 +56,7 @@ int countWord(FILE *file) {
 	int line = 1;
 	char c, ignore;
 	while (fscanf_s(file, "%c", &c, sizeof(char)) != EOF) {
+		if (c < 0 || c>255) continue;
 		if (c == '\n') {
 			if (line == 1) {
 				for (int i = 0; i < 7; i++) fscanf_s(file, "%c", &ignore, sizeof(char));
@@ -92,6 +94,7 @@ int countLine(FILE *file) {
 	char c, ignore;
 	bool isline = false;
 	while (fscanf_s(file, "%c", &c, sizeof(char)) != EOF) {
+		if (c < 0 || c>255) continue;
 		if (c == '\n') {
 			if (line == 1) {
 				for (int i = 0; i < 7; i++) fscanf_s(file, "%c", &ignore, sizeof(char));
@@ -133,6 +136,7 @@ int countFre(FILE *file) {
 	int w_cnt = 0;
 	int m_cnt = 0;
 	while (fscanf_s(file, "%c", &c, sizeof(char)) != EOF) {
+		if (c < 0 || c>255) continue;
 		if (c == '\n') {
 			if (line == 1) {
 				for (int i = 0; i < 7; i++) fscanf_s(file, "%c", &ignore, sizeof(char));
@@ -155,19 +159,111 @@ int countFre(FILE *file) {
 				continue;
 			}
 		}
-		if (isalpha(c) || isdigit(c) && alacnt >= 4) {
-			temp += c;
-			alacnt++;
+		if (m == 1) {
+			if (isalpha(c) || isdigit(c) && alacnt >= 4) {
+				temp += c;
+				alacnt++;
+			}
+			else if (alacnt < 4 && !isalpha(c)) {
+				temp = "";
+				alacnt = 0;
+			}
+			else if (alacnt >= 4 && !(isalpha(c) || isdigit(c))) {
+				bool found = false;
+				for (int i = 0; i < (int)temp.length(); i++)
+					temp[i] = tolower(temp[i]);
+				for (int i = 0; i < w_cnt; i++) {
+					if (temp == word[i]) {
+						if (w && (line == 2 || line == 3 && c == '\n')) times[i] += 10;
+						else times[i]++;
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					word[w_cnt] = temp;
+					if (w && (line == 2 || line == 3 && c == '\n')) times[w_cnt] += 10;
+					else times[w_cnt]++;
+					w_cnt++;
+				}
+				temp = "";
+				alacnt = 0;
+			}
 		}
-		else if (m_cnt > 0 && alacnt == 0 && !isalpha(c) && !isdigit(c)) {
-			temp += c;
+		else {
+			if (isalpha(c) || isdigit(c) && alacnt >= 4) {
+				temp += c;
+				alacnt++;
+			}
+			else if (m_cnt > 0 && alacnt == 0 && !isalpha(c) && !isdigit(c)) {
+				temp += c;
+			}
+			else if (alacnt < 4 && !isalpha(c)) {
+				temp = "";
+				m_cnt = 0;
+				alacnt = 0;
+			}
+			else if (alacnt >= 4 && !(isalpha(c) || isdigit(c))) {
+				m_cnt++;
+				if (m_cnt == m) {
+					bool found = false;
+					for (int i = 0; i < (int)temp.length(); i++)
+						temp[i] = tolower(temp[i]);
+					for (int i = 0; i < w_cnt; i++) {
+						if (temp == word[i]) {
+							if (w && (line == 2 || line == 3 && c == '\n')) times[i] += 10;
+							else times[i]++;
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						word[w_cnt] = temp;
+						if (w && (line == 2 || line == 3 && c == '\n')) times[w_cnt] += 10;
+						else times[w_cnt]++;
+						w_cnt++;
+					}
+					int pos = 0;
+					for (int i = 0; i < (int)temp.length(); i++) {
+						if (!isdigit(temp[i]) && !isalpha(temp[i])) {
+							pos = i;
+							break;
+						}
+					}
+					temp = string(temp, pos + 1);
+					m_cnt--;
+				}
+				temp += c;
+				alacnt = 0;
+			}
+			if (line == 3 && c == '\n') {
+				m_cnt = 0;
+				temp = "";
+			}
 		}
-		else if (alacnt < 4 && !isalpha(c)) {
-			temp = "";
-			m_cnt = 0;
-			alacnt = 0;
+		
+	}
+	if (alacnt >= 4) {
+		if (m == 1) {
+			bool found = false;
+			for (int i = 0; i < (int)temp.length(); i++)
+				temp[i] = tolower(temp[i]);
+			for (int i = 0; i < w_cnt; i++) {
+				if (temp == word[i]) {
+					if (w && (line == 2 || line == 3 && c == '\n')) times[i] += 10;
+					else times[i]++;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				word[w_cnt] = temp;
+				if (w && (line == 2 || line == 3 && c == '\n')) times[w_cnt] += 10;
+				else times[w_cnt]++;
+				w_cnt++;
+			}
 		}
-		else if (alacnt >= 4 && !(isalpha(c) || isdigit(c))) {
+		else {
 			m_cnt++;
 			if (m_cnt == m) {
 				bool found = false;
@@ -187,45 +283,8 @@ int countFre(FILE *file) {
 					else times[w_cnt]++;
 					w_cnt++;
 				}
-				int pos = 0;
-				for (int i = 0; i < (int)temp.length(); i++) {
-					if (!isdigit(temp[i]) && !isalpha(temp[i])) {
-						pos = i;
-						break;
-					}
-				}
-				temp = string(temp, pos + 1);
-				m_cnt--;
 			}
-			temp += c;
-			alacnt = 0;
-		}
-		if (line == 3 && c == '\n') {
-			m_cnt = 0;
-			temp = "";
-		}
-	}
-	if (alacnt >= 4) {
-		m_cnt++;
-		if (m_cnt == m) {
-			bool found = false;
-			for (int i = 0; i < (int)temp.length(); i++)
-				temp[i] = tolower(temp[i]);
-			for (int i = 0; i < w_cnt; i++) {
-				if (temp == word[i]) {
-					if (w && (line == 2 || line == 3 && c == '\n')) times[i] += 10;
-					else times[i]++;
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				word[w_cnt] = temp;
-				if (w && (line == 2 || line == 3 && c == '\n')) times[w_cnt] += 10;
-				else times[w_cnt]++;
-				w_cnt++;
-			}
-		}
+		}		
 	}
 	for (int i = 0; i < w_cnt - 1; i++) {
 		for (int j = 0; j < w_cnt - 1 - i; j++) {
